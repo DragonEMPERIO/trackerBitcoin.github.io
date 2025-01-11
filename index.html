@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bitcoin Tracker</title>
+  <style>
+    body {
+      font-family: 'Arial', sans-serif;
+      background-color: #0d1117;
+      color: #ffffff;
+      margin: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+
+    .container {
+      text-align: center;
+      background: linear-gradient(135deg, #1e2125, #24292f);
+      border: 3px solid gold;
+      border-radius: 20px;
+      padding: 30px;
+      width: 95%;
+      max-width: 800px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    }
+
+    h1 {
+      font-size: 36px;
+      color: gold;
+      margin-bottom: 20px;
+    }
+
+    #price-container {
+      margin: 20px 0;
+    }
+
+    #btc-price {
+      font-size: 48px;
+      color: #27ae60;
+    }
+
+    #btc-change {
+      font-size: 24px;
+      color: #e74c3c;
+    }
+
+    canvas {
+      margin: 30px 0;
+      background: #1e2125;
+      border-radius: 10px;
+    }
+
+    footer {
+      margin-top: 20px;
+      font-size: 14px;
+      color: #8b8b8b;
+    }
+
+    .currency-selector {
+      margin: 20px 0;
+      display: flex;
+      justify-content: center;
+    }
+
+    .currency-selector button {
+      background-color: #1e2125;
+      color: gold;
+      border: 2px solid gold;
+      border-radius: 10px;
+      padding: 10px 20px;
+      margin: 0 10px;
+      cursor: pointer;
+    }
+
+    .currency-selector button:hover {
+      background-color: gold;
+      color: black;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Tracker</h1>
+    <div id="price-container">
+      <p>Current Bitcoin Price:</p>
+      <h2 id="btc-price">Loading...</h2>
+    </div>
+    <div class="currency-selector">
+      <button onclick="setCurrency('usd')">USD</button>
+      <button onclick="setCurrency('brl')">BRL</button>
+    </div>
+    <canvas id="price-chart" width="700" height="300"></canvas>
+    <footer>Data updated every 60 seconds</footer>
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script>
+    const apiUrl = "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=";
+    const priceElement = document.getElementById("btc-price");
+    const ctx = document.getElementById("price-chart").getContext("2d");
+    let currency = "usd"; // Default currency is USD
+
+    let chartData = {
+      labels: [],
+      datasets: [
+        {
+          label: "Bitcoin Price",
+          data: [],
+          borderColor: "gold",
+          backgroundColor: "rgba(255, 215, 0, 0.2)",
+          tension: 0.4,
+          fill: true,
+        },
+      ],
+    };
+
+    let priceChart = new Chart(ctx, {
+      type: "line",
+      data: chartData,
+      options: {
+        responsive: true,
+        scales: {
+          x: {
+            ticks: { color: "#ffffff" },
+            title: { display: true, text: "Time", color: "#ffffff" },
+          },
+          y: {
+            ticks: { color: "#ffffff" },
+            title: { display: true, text: "Price", color: "#ffffff" },
+          },
+        },
+        plugins: {
+          legend: {
+            labels: { color: "#ffffff" },
+          },
+        },
+      },
+    });
+
+    async function fetchBitcoinData() {
+      try {
+        const response = await fetch(`${apiUrl}${currency}`);
+        if (!response.ok) throw new Error("API response error");
+        const data = await response.json();
+        const price = data.bitcoin[currency];
+
+        // Atualiza os elementos no site
+        priceElement.textContent = `${currency.toUpperCase()} $${price.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+        // Adiciona os dados ao gráfico
+        const currentTime = new Date().toLocaleTimeString();
+        chartData.labels.push(currentTime);
+        chartData.datasets[0].data.push(price);
+
+        if (chartData.labels.length > 50) {
+          chartData.labels.shift();
+          chartData.datasets[0].data.shift();
+        }
+
+        priceChart.update();
+      } catch (error) {
+        console.error("Error fetching Bitcoin data:", error);
+        priceElement.textContent = "Error loading data";
+      }
+    }
+
+    function setCurrency(newCurrency) {
+      currency = newCurrency;
+      chartData.labels = [];
+      chartData.datasets[0].data = [];
+      fetchBitcoinData();
+    }
+
+    // Atualiza os dados a cada 10 segundos
+    setInterval(fetchBitcoinData, 60000);
+    fetchBitcoinData();
+  </script>
+</body>
+</html>
